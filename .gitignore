@@ -1,0 +1,11 @@
+# 本仓库仅分发说明文件与许可证，源代码与构建产物一律不纳入版本库。
+# 程序通过 GitHub Releases 以二进制附件形式发布。
+
+# 忽略一切
+*
+
+# 仅保留需要公开的文件
+!README.md
+!LICENSE
+!.gitignore
+!favicon.ico
