@@ -2,7 +2,8 @@
 
 一个 Windows 桌面程序，用于批量登录 **SDT 设备**（SSH / Telnet），自动执行巡检命令并将结果保存为日志。本程序是 SDT 设备专用巡检程序。
 
-![Uploading image.png…]()
+<img width="1242" height="812" alt="image" src="https://github.com/user-attachments/assets/a30f331d-da7e-4ac3-9ecb-c7b829a7b617" />
+
 
 
 > 本仓库**仅分发编译后的程序**，源代码不公开。
