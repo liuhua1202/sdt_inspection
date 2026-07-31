@@ -433,7 +433,7 @@ DATA = [
 
 a = Analysis(
 
-    ['sdt_inspection_v1.0.1.py'],
+    ['sdt_inspection.py'],
 
     pathex=PATHS,
 
