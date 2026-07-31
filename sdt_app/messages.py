@@ -1,0 +1,142 @@
+"""Centralised UI strings.
+
+All user-facing Chinese text now lives here so the rest of the codebase
+can stay free of inline literals.  Future i18n work can simply import
+``M`` and look up keys.
+"""
+
+M = {
+    "app.title": "SDT network device inspection",
+    "app.brand_title": "SDT network device inspection console",
+    "app.brand_subtitle": "Batch Telnet / SSH config collection \u00b7 realtime log \u00b7 periodic scheduling",
+    "app.action.view_logs": "View logs",
+    "app.file.devices": "Devices: not loaded",
+    "app.file.commands": "Commands: not loaded",
+
+    "stat.total": "Total devices",
+    "stat.total.hint": "Loaded",
+    "stat.success": "Inspections succeeded",
+    "stat.success.hint": "This session",
+    "stat.failed": "Inspections failed",
+    "stat.failed.hint": "This session",
+    "stat.running": "In progress",
+    "stat.running.hint": "Not started",
+
+    "toolbar.start": "Start inspection",
+    "toolbar.stop": "Stop",
+    "toolbar.load_devices": "Load devices",
+    "toolbar.load_commands": "Load commands",
+    "toolbar.concurrency": "Concurrency",
+    "toolbar.encoding": "Encoding",
+    "toolbar.strict_host": "Strict host key check",
+    "toolbar.progress": "Realtime progress",
+
+    "schedule.enable": "Enable periodic inspection",
+    "schedule.every": "every",
+    "schedule.day": "day",
+    "schedule.weekday": "weekday",
+    "schedule.hour": "hour",
+    "schedule.minute": "minute",
+    "schedule.run": "run inspection",
+    "schedule.next": "Next inspection: ",
+    "schedule.disabled": "not enabled",
+    "schedule.error": "Schedule configuration error",
+    "schedule.freq.daily": "Daily",
+    "schedule.freq.weekly": "Weekly",
+    "schedule.freq.monthly": "Monthly",
+
+    "body.devices": "Devices",
+    "body.log": "Runtime log",
+    "body.log.subtitle": "Live inspection events",
+    "body.search": "Search",
+    "body.search.clear": "Clear",
+    "body.select.all": "Select all",
+    "body.select.invert": "Invert",
+    "body.select.none": "Deselect all",
+    "body.col.name": "Device name",
+    "body.col.host": "Address : port",
+    "body.col.protocol": "Protocol",
+    "body.col.status": "Status",
+    "body.status.waiting": "Waiting",
+    "body.status.connecting": "Connecting",
+    "body.status.success": "Success",
+    "body.status.failed": "Failed",
+    "body.status.cancelled": "Cancelled",
+
+    "dialog.cannot_start": "Cannot start",
+    "dialog.no_device": "Please select at least one device",
+    "dialog.no_command": "No inspection commands available",
+    "dialog.config_error": "Configuration error",
+    "dialog.concurrency_error": "Concurrency must be an integer between 1 and 50",
+    "dialog.start_failed": "Start failed",
+    "dialog.confirm_stop": "Confirm stop",
+    "dialog.confirm_stop_msg": "Stop the current inspection?\nAll connections will be closed immediately.",
+    "dialog.exit": "Exit",
+    "dialog.exit_msg": "Inspection is still running. Exit anyway?",
+    "dialog.open_failed": "Open failed",
+    "dialog.schedule_trigger_failed": "Periodic inspection start failed: ",
+    "dialog.autostart_failed": "Auto inspection start failed: ",
+
+    "log.starting": "Starting inspection, {total} devices, concurrency {concurrency}",
+    "log.no_devices": "No devices selected",
+    "log.no_commands": "No inspection commands available",
+    "log.device_starting": "Starting inspection: {name} ({host})",
+    "log.device_done": "Device {name}: {status}",
+    "log.device_fail": "Device {name} inspection failed: {error}",
+    "log.file_failed": "Device {name} result file write failed: {err}",
+    "log.coord_failed": "Inspection coordinator thread exception: {err}",
+    "log.stopping": "Stopping inspection, closing all connections immediately",
+    "log.finished": "Inspection finished: {total} devices, {ok} ok, {fail} failed, {cancel} cancelled",
+    "log.progress": "Completed {done}/{total}",
+    "log.cancel_ask": "User initiated stop, closing all connections immediately.",
+    "log.strict_on": "SSH host key check enabled (RejectPolicy)",
+    "log.strict_off": "SSH host key check disabled (AutoAddPolicy); toggle in toolbar or set SDT_STRICT_HOST_KEYS=1",
+    "log.result_file": "Result file: {path}",
+    "log.timing": "Time must be in HH:MM format",
+    "log.timing_range": "Time must be between 00:00 and 23:59",
+    "log.freq_required": "Frequency must be daily / weekly / monthly",
+    "log.day_range": "Day of month must be between 1 and 31",
+    "log.weekday_range": "Weekday must be between 1 and 7",
+    "log.choose_freq": "Please choose daily / weekly / monthly",
+    "log.schedule_daily": "Periodic inspection enabled, every day {time}",
+    "log.schedule_weekly": "Periodic inspection enabled, every week {weekday} {time}",
+    "log.schedule_monthly": "Periodic inspection enabled, every month day {day} {time}",
+    "log.schedule_off": "Periodic inspection disabled",
+    "log.schedule_due_skipped": "Periodic inspection due, but another inspection is already running; skipping this one",
+    "log.schedule_due_start": "Scheduled task due, starting automatic inspection",
+    "log.telnet_no_commands": "No inspection commands available",
+    "log.cancelled": "Inspection cancelled by user",
+    "log.cancelled_mid": "Inspection cancelled",
+    "log.ssh_no_prompt": "SSH connection succeeded but no device command prompt detected",
+    "log.ssh_no_user": "Device requires login authentication but no username or password configured",
+    "log.ssh_user_fail": "Device user authentication failed",
+    "log.ssh_no_enable": "Device requires enable but no enable password configured",
+    "log.ssh_connect_fail": "SSH connection failed: {err}",
+
+    "err.config_load_devices": "Device list file does not exist: {path}",
+    "err.config_load_devices_io": "Failed to load device list: {err}",
+    "err.config_load_commands": "Command file does not exist: {path}",
+    "err.config_load_commands_io": "Failed to load command file: {err}",
+    "err.config_parse": "Unable to identify file encoding: {path} ({err})",
+    "err.config_decode": "Protocol must be ssh or telnet: {proto}",
+    "err.config_row_short": "Device type config line {n} has too few fields, skipped",
+    "err.config_row_invalid": "Device type config line {n} is invalid: {err}",
+    "err.config_device_row_short": "Device config line {n} missing device name, address, username, or password, skipped",
+    "err.config_device_row_invalid_proto": "Device config line {n} protocol is invalid, skipped",
+    "err.config_device_port_int": "Device config line {n} port is not an integer, skipped",
+    "err.config_device_port_range": "Device config line {n} port is out of range, skipped",
+    "err.config_device_blank": "Device config line {n} device name or address is blank, skipped",
+    "err.config_unknown_type": "Device config line {n} references unknown device type {type}, using SDT default type",
+    "err.config_no_commands": "Command file has no valid commands: {path}",
+}
+
+
+def t(key: str, **kwargs) -> str:
+    """Look up a string by key and apply ``str.format`` substitutions."""
+    template = M.get(key, key)
+    if kwargs:
+        try:
+            return template.format(**kwargs)
+        except (KeyError, IndexError):
+            return template
+    return template
