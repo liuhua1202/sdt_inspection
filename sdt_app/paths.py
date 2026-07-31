@@ -32,7 +32,6 @@ COMMANDS_DIR = CONFIG_DIR / "commands"
 LOG_DIR = BASE_DIR / "InspectionLogs"
 LOG_FILE_DIR = LOG_DIR / "logs"
 DEFAULT_DEVICES_FILE = CONFIG_DIR / "devices.csv"
-DEFAULT_TYPES_FILE = CONFIG_DIR / "device_types.csv"
 DEFAULT_COMMANDS_FILE = COMMANDS_DIR / "commands_sdt.txt"
 
 
@@ -48,17 +47,14 @@ def _seed_config_template(target):
     commands_dir = target / "commands"
     commands_dir.mkdir(exist_ok=True)
 
-    # Example devices.csv (legacy six-column format).
+    # Example devices.csv (SDT-only six-column format).
     devices = target / "devices.csv"
     if not devices.exists():
         devices.write_text("""\
 Sample device list.  Replace with your own devices.
 
 Format: name, ip, username, password, protocol, port
-  (6-column legacy SDT format)
-  OR
-  name, ip, type_id, username, password, enable_password, port, protocol
-  (8-column reference format)
+  (6-column SDT format - this is the only supported layout)
 
 SDT-Device-01,192.168.1.101,admin,password123,telnet,23
 SDT-Device-02,192.168.1.102,admin,password124,ssh,22
@@ -89,13 +85,9 @@ SDT 网络设备巡检 - Windows 端使用说明
 快速上手（5 分钟）
 ------------------------------------------------------------
 1. 打开 config/devices.csv，用你的设备信息替换示例。
-   其中两种格式：
-   • 6 列形式（与原版 SDT 兼容）：
+   格式（唯一支持的 6 列 SDT 格式）：
          name, ip, username, password, protocol, port
        示例: Switch-01,192.168.1.1,admin,password123,ssh,22
-   • 8 列形式（带设备类型 id）：
-         name, ip, type_id, username, password, enable_password, port, protocol
-       示例: Switch-01,192.168.1.1,sdt,admin,password123,,22,ssh
 2. 如果你有自己的命令文件，放到 config/commands/ 文件夹下，
    默认加载 config/commands/commands_sdt.txt（含 2 条示例命令）。
 3. 双击工作目录下的 sdt_inspection.exe，启动程序。
@@ -146,8 +138,7 @@ A: 删除工作目录下的 config/ 文件夹，重启即可重生示例。
 项目资源
 ------------------------------------------------------------
 · 项目仓库：README.md / DESIGN.md / CHANGELOG.md
-· 重新打包：python -m PyInstaller sdt_inspection.spec
-· 生成多分辨率 favicon：python tools/regen_favicon.py""", encoding="utf-8")
+· 重新打包：python -m PyInstaller sdt_inspection.spec""", encoding="utf-8")
 
 
 def ensure_directories():

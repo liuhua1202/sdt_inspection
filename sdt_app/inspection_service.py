@@ -12,7 +12,14 @@ from threading import Event, Lock, Thread
 from typing import Callable
 
 from .logging_service import AppLogger
-from .models import Device, DeviceType, InspectionEvent, InspectionResult, ResultStatus
+from .models import (
+    DEFAULT_SDT_TYPE,
+    Device,
+    DeviceType,
+    InspectionEvent,
+    InspectionResult,
+    ResultStatus,
+)
 from .paths import result_file_path
 from .transport import (
     InspectionCancelled,
@@ -214,9 +221,11 @@ class InspectionService:
         strict_host_keys: bool = False,
     ) -> InspectionResult:
         started_at = datetime.now()
-        device_type = device_types.get(device.type_id) or device_types.get("sdt")
-        if device_type is None:
-            device_type = DeviceType("sdt", "SDT设备")
+        device_type = (
+            device_types.get(device.type_id)
+            or device_types.get(DEFAULT_SDT_TYPE.type_id)
+            or DEFAULT_SDT_TYPE
+        )
         commands = self._commands_for(device, commands_by_type)
         log_path = result_file_path(device.name, device.host, started_at)
         # Pass the device's secrets as ``sensitive`` so the logger

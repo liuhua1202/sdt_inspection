@@ -831,7 +831,7 @@ class InspectionUI:
                        ("\u6240\u6709\u6587\u4ef6", "*.*")])
         if not path:
             return
-        devices, warnings = load_devices(Path(path), self.device_types)
+        devices, warnings = load_devices(Path(path))
         self.devices = devices
         self.devices_file_var.set(f"\u8bbe\u5907\u5217\u8868\uff1a{path}")
         self._refresh_tree()
