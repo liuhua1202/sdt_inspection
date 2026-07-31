@@ -2,6 +2,65 @@
 
 A running log of notable changes, organised by severity.
 
+## Unreleased
+
+### Scope narrowing \u2014 SDT-only simplification
+
+* **8-column "with device type" CSV format removed.**  The
+  program is now strictly SDT-only.  `config_loader.load_devices`
+  rejects any row that does not have exactly six columns with a
+  warning that names the expected layout
+  (`name,ip,username,password,protocol,port`), so a stray
+  trailing comma is obvious in the UI instead of being silently
+  mis-mapped.
+
+* **`config/device_types.csv` and the per-operator device-type
+  layer removed.**  Driver, paging command, command file path,
+  and enable-mode flag are now hard-coded in
+  `sdt_app.models.DEFAULT_SDT_TYPE`.  `load_device_types`,
+  `paths.DEFAULT_TYPES_FILE`, and the `device_types` parameter
+  on `load_project` / `load_devices` have been deleted.
+
+* **`Device.enable_password` removed.**  The 6-column format
+  has no slot for it, SDT does not require enable, and the
+  field was never read by the transport layer.
+
+* **README, DESIGN, and the seeded `config/README.txt` /
+  `config/devices.csv` updated** to drop the 8-column example
+  and the device-types section.  The 本程序是 SDT 设备专用
+  note in the README is now the only device-scope statement.
+
+* **Test suite updated** to cover the new strict-6-column
+  behaviour (rejects 5/7/8 column rows with a clear warning)
+  and to drop the device-type / 8-column reference tests.
+
+### Visual
+
+* **Application icon updated** to a 6-frame multi-resolution
+  `.ico` (16/32/48/64/128/256) derived from the new high-res
+  brand mark.  Previous favicon.ico is replaced; the same
+  search order (`BASE_DIR / "favicon.ico"`, then
+  `DATA_DIR / "favicon.ico"`) is preserved, so frozen builds
+  pick up the new icon automatically.
+
+### Patches retained from v2.1 (security / robustness)
+
+* `redact_sensitive` scrubs credentials from the persistent
+  log file and the live UI log.
+* `_ConnectionTracker.close_all` runs each `close()` in a
+  daemon thread with a 0.5s budget.
+* `output.has_prompt` no longer treats `[Y/N]`, `[Enter]`,
+  `Press any key to continue [Enter]`, or any line ending in
+  `?` as a device prompt.
+* Events queue is bounded (10k) with `put_nowait` so a frozen
+  UI cannot make workers grow it without bound.
+* `client.invoke_shell()` is interruptible so the Stop button
+  reacts within ~300 ms even mid-handshake.
+* `Device.password` and `Device.enable_password` were marked
+  `field(repr=False)` (the latter is now removed entirely).
+* `icon_helper` uses `LR_SHARED` so the favicon-reapply loop
+  no longer leaks HICON handles.
+
 ## v2.1 \u2014 Audit and refactor pass
 
 ### P0 \u2014 critical bugs (would corrupt state or lose data)

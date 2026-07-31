@@ -13,9 +13,8 @@
 ## 功能特性
 
 - **并发巡检**：1–50 台并发（默认 5），基于线程池
-- **协议支持**：SSH（Paramiko）/ Telnet（Netmiko），按设备类型自动选择驱动
-- **设备类型可配置**：驱动、命令文件、分页禁用命令、是否需要 enable
-- **实时搜索**：按设备名 / IP / 类型 / 协议 / 端口 过滤列表，不改变选中状态
+- **协议支持**：SSH（Paramiko）/ Telnet（Netmiko），按设备配置自动选择驱动
+- **实时搜索**：按设备名 / IP / 协议 / 端口 过滤列表，不改变选中状态
 - **定时巡检**：每天 / 每周 / 每月，指定时间自动执行，展示下一次运行时间
 - **SSH 主机密钥**：默认兼容旧 SDT（自动接受未知密钥），可开启严格校验
 - **结果日志**：每台设备独立文件，按天归档，密码以 `****` 脱敏
@@ -34,27 +33,25 @@
 
 ### 设备列表 `config/devices.csv`
 
-兼容两种格式：
+唯一支持的 6 列 SDT 格式：
 
-- 6 列（原版 SDT）：`设备名,IP地址,用户名,密码,协议,端口`
-  ```
-  SDT-Device-01,192.168.1.101,admin,password123,telnet,23
-  ```
-- 8 列（带设备类型）：`设备名,IP地址,设备类型ID,用户名,密码,enable密码,端口,协议`
-  ```
-  核心设备,192.168.1.1,sdt,admin,password,,23,telnet
-  ```
+| 列 | 含义 | 示例 |
+|---|---|---|
+| 设备名 | 显示名，UI 树 / 日志文件名使用 | `SDT-Device-01` |
+| IP 地址 | 设备 IP 或域名 | `192.168.1.101` |
+| 用户名 | 登录账号 | `admin` |
+| 密码 | 登录密码（明文，落盘前在结果日志中以 `****` 脱敏） | `password123` |
+| 协议 | `ssh` 或 `telnet` | `telnet` |
+| 端口 | 1–65535；空时按协议默认（ssh=22, telnet=23） | `23` |
 
-协议为空时使用设备类型的默认协议。文件编码支持 UTF-8、GB18030、GBK、GB2312、Big5。
-
-### 设备类型 `config/device_types.csv`
-
-```text
-类型ID,名称,SSH驱动,Telnet驱动,是否需要enable,禁用分页命令,默认协议,命令文件路径
-sdt,SDT设备,paramiko,generic_termserver_telnet,0,,telnet,commands/commands_sdt.txt
+```
+SDT-Device-01,192.168.1.101,admin,password123,telnet,23
+SDT-Device-02,192.168.1.102,admin,password124,ssh,22
 ```
 
-命令文件路径相对于 `config` 目录。
+文件编码支持 UTF-8、GB18030、GBK、GB2312、Big5。
+
+> 本程序是 **SDT 设备专用** 巡检程序。不支持 8 列「带设备类型」格式或自定义设备类型 —— 驱动、分页命令、命令文件等全部硬编码在 `sdt_app/models.py` 的 `DEFAULT_SDT_TYPE` 常量中。
 
 ### 命令文件 `config/commands/commands_sdt.txt`
 
