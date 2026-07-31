@@ -276,7 +276,7 @@ class ExecuteSshFallbackTests(unittest.TestCase):
         # First attempt used the hard-coded SDT pre-auth account,
         # NOT ``device.password``.
         self.assertEqual(connect_log[0].get("username"), "sdt")
-        self.assertEqual(connect_log[0].get("password"), "1213456")
+        self.assertEqual(connect_log[0].get("password"), "123456")
         self.assertNotIn("pkey", connect_log[0])
         # Second attempt dropped the password and attached the key.
         self.assertNotIn("password", connect_log[1])
@@ -316,7 +316,7 @@ class ExecuteSshFallbackTests(unittest.TestCase):
         self.assertEqual(len(connect_log), 1)
         sent = connect_log[0]
         self.assertEqual(sent.get("username"), "sdt")
-        self.assertEqual(sent.get("password"), "1213456")
+        self.assertEqual(sent.get("password"), "123456")
         # And the operator's own credentials did not leak through.
         self.assertNotEqual(sent.get("username"), "admin")
         self.assertNotEqual(sent.get("password"), "admin123")
@@ -326,7 +326,27 @@ class ExecuteSshFallbackTests(unittest.TestCase):
         pre-auth account without having to grep the source.
         """
         self.assertEqual(transport.SDT_SSH_USERNAME, "sdt")
-        self.assertEqual(transport.SDT_SSH_PASSWORD, "1213456")
+        self.assertEqual(transport.SDT_SSH_PASSWORD, "123456")
+
+    def test_sdt_preauth_password_matches_documented_value(self):
+        """Lock in the SDT pre-auth password as ``123456``.
+
+        This value was confirmed by the operator on a live
+        SDT-Device-02 on 2026-07-31.  If you need to change it,
+        re-verify on hardware FIRST, then update both the
+        constant in ``transport.py`` and this assertion.
+
+        The test exists so a careless typo (``123465`` /
+        ``123465`` / ``1233456``) is caught at ``python -m
+        unittest`` time, not after a customer reports
+        ``Authentication failed`` in production.
+        """
+        self.assertEqual(
+            transport.SDT_SSH_PASSWORD, "123456",
+            "SDT pre-auth password drifted from the value the "
+            "operator confirmed on a live device.  Re-verify on "
+            "hardware before changing this assertion."
+        )
 
     def test_bad_auth_type_without_key_raises_actionable_error(self):
         connect_log = []

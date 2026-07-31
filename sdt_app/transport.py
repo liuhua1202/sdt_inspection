@@ -441,15 +441,23 @@ def _execute_netmiko(
 _SSH_KEY_FILENAMES = ("id_ed25519", "id_rsa", "id_ecdsa")
 
 # SDT devices accept only a hard-coded pre-auth SSH account
-# (``sdt`` / ``1213456``) at the SSH layer.  The operator's
+# (``sdt`` / ``123456``) at the SSH layer.  The operator's
 # own credentials from ``devices.csv`` are reserved for the
 # *second-stage* ``login <user> <pass>`` command that the
 # pre-auth shell demands (recognised by a prompt ending in
 # ``]``).  Do not let the device-supplied username/password
 # leak into the SSH handshake -- the device's sshd will
 # reject them.
+#
+# The ``123456`` password was confirmed by the operator on a
+# live SDT-Device-02 on 2026-07-31.  A test
+# (``test_sdt_preauth_password_matches_documented_value``)
+# locks in this value so a careless edit shows up in CI
+# before it ships.  If the device vendor ever changes the
+# pre-auth password, update BOTH the constant AND the test
+# after re-verifying on hardware.
 SDT_SSH_USERNAME = "sdt"
-SDT_SSH_PASSWORD = "1213456"
+SDT_SSH_PASSWORD = "123456"
 
 
 def _candidate_ssh_key_paths():
