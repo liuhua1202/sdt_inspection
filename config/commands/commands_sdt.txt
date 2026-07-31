@@ -1,4 +1,5 @@
 show node
 show run
-show interface
-show device
+show dev
+show int
+show switch

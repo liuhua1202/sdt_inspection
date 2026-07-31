@@ -66,8 +66,11 @@ SDT-Device-04,192.168.1.104,admin,password126,ssh,10022
     cmds = commands_dir / "commands_sdt.txt"
     if not cmds.exists():
         cmds.write_text("""\
-display version
-show running-config
+show node
+show run
+show dev
+show int
+show switch
 """, encoding="utf-8")
 
     # README pointing the operator at the docs.
@@ -89,7 +92,7 @@ SDT 网络设备巡检 - Windows 端使用说明
          name, ip, username, password, protocol, port
        示例: Switch-01,192.168.1.1,admin,password123,ssh,22
 2. 如果你有自己的命令文件，放到 config/commands/ 文件夹下，
-   默认加载 config/commands/commands_sdt.txt（含 2 条示例命令）。
+   默认加载 config/commands/commands_sdt.txt（含 5 条示例命令）。
 3. 双击工作目录下的 sdt_inspection.exe，启动程序。
 4. 在主界面勾选要巡检的设备 -> 点“开始巡检” -> 查看日志面板。
 

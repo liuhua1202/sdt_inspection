@@ -58,8 +58,11 @@ SDT-Device-02,192.168.1.102,admin,password124,ssh,22
 每行一条命令，`#` 开头的行会被忽略：
 
 ```text
-display version
-show running-config
+show node
+show run
+show dev
+show int
+show switch
 ```
 
 ## 界面说明
