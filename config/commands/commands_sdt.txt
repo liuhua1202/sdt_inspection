@@ -1,0 +1,4 @@
+show node
+show run
+show interface
+show device

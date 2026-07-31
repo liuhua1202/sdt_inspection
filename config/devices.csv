@@ -1,0 +1,11 @@
+#设备名,IP地址,用户名,密码,协议,端口
+SDT-Device-01,192.168.1.101,admin,password123,telnet,23
+SDT-Device-02,192.168.1.102,admin,password124,ssh,22
+SDT-Device-03,192.168.1.103,admin,password125,telnet,10023
+SDT-Device-04,192.168.1.104,admin,password126,ssh,10022
+SDT-Device-05,192.168.1.105,admin,password127,telnet,23
+SDT-Device-06,192.168.1.106,admin,password128,ssh,22
+SDT-Device-07,192.168.1.107,admin,password129,telnet,23
+SDT-Device-08,192.168.1.108,admin,password130,ssh,22
+SDT-Device-09,192.168.1.109,admin,password131,telnet,23
+SDT-Device-10,192.168.1.110,admin,password132,ssh,22
