@@ -51,8 +51,6 @@ SDT-Device-02,192.168.1.102,admin,password124,ssh,22
 
 文件编码支持 UTF-8、GB18030、GBK、GB2312、Big5。
 
-> 本程序是 **SDT 设备专用** 巡检程序。不支持 8 列「带设备类型」格式或自定义设备类型 —— 驱动、分页命令、命令文件等全部硬编码在 `sdt_app/models.py` 的 `DEFAULT_SDT_TYPE` 常量中。
-
 ### 命令文件 `config/commands/commands_sdt.txt`
 
 每行一条命令，`#` 开头的行会被忽略：
