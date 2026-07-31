@@ -528,47 +528,58 @@ def _execute_ssh(
             )
         except InspectionCancelled:
             raise
-        except Exception as exc:
-            # Paramiko raises ``No authentication methods available``
-            # when the device's kex-init only advertises publickey
-            # and the client only offered password.  In that case
-            # look for a default SSH key in the operator's standard
-            # locations and retry; if no key is available, surface
-            # a clear, actionable error instead of Paramiko's
-            # one-liner.
-            if "No authentication methods available" in str(exc):
-                key = _try_load_default_ssh_key(paramiko)
-                if key is not None:
-                    key_args = dict(connect_args)
-                    key_args.pop("password", None)
-                    key_args["pkey"] = key
-                    try:
-                        _run_interruptible(
-                            lambda: client.connect(**key_args),
-                            lambda: _disconnect_fast(
-                                client,
-                                timeout=options.abort_join_after,
-                            ),
-                            stop_event,
-                            poll_interval=options.poll_interval,
-                            join_after=options.abort_join_after,
-                        )
-                    except InspectionCancelled:
-                        raise
-                    except Exception as exc2:
-                        raise TransportError(
-                            f"SSH \u8fde\u63a5\u5931\u8d25: \u5bc6\u7801\u88ab\u670d\u52a1\u5668\u62d2\u7edd\uff0c"
-                            f"\u9a8c\u8bc1\u5bc6\u94a5\u4e5f\u5931\u8d25 ({exc2})"
-                        ) from exc
-                else:
+        except paramiko.BadAuthenticationType as exc:
+            # The device's kex-init only advertised auth methods
+            # we did not offer (typically ``publickey`` while we
+            # sent ``password``).  Look for a default SSH key in
+            # the operator's standard locations and retry with
+            # ``pkey=``; if no key is available, surface a clear,
+            # actionable error instead of Paramiko's one-liner.
+            #
+            # Catching by exception type (not by message match)
+            # is deliberate: future Paramiko versions are free to
+            # rephrase the explanation string, but
+            # ``BadAuthenticationType`` is part of the public API
+            # and also gives us ``allowed_types`` / ``types_tried``
+            # for richer diagnostics later.
+            key = _try_load_default_ssh_key(paramiko)
+            if key is not None:
+                key_args = dict(connect_args)
+                key_args.pop("password", None)
+                key_args["pkey"] = key
+                try:
+                    _run_interruptible(
+                        lambda: client.connect(**key_args),
+                        lambda: _disconnect_fast(
+                            client,
+                            timeout=options.abort_join_after,
+                        ),
+                        stop_event,
+                        poll_interval=options.poll_interval,
+                        join_after=options.abort_join_after,
+                    )
+                except InspectionCancelled:
+                    raise
+                except Exception as exc2:
+                    # Chain to the *new* failure (key auth), not
+                    # back to the original ``No auth methods``
+                    # trigger -- the operator needs to see the
+                    # real reason the key path failed (wrong key,
+                    # server rejected the public half, etc.).
                     raise TransportError(
-                        "SSH \u8fde\u63a5\u5931\u8d25: \u670d\u52a1\u5668\u62d2\u7edd\u5bc6\u7801\u8ba4\u8bc1\uff0c"
-                        "\u8bf7\u5c06\u79c1\u94a5\u653e\u5230 \u7ed3\u6784 \u4e0b\u7684\u4efb\u4e00\u4f4d\u7f6e: "
-                        "~/.ssh/id_ed25519\u3001~/.ssh/id_rsa\u3001"
-                        "<exe-dir>/config/id_ed25519 \u6216 id_rsa\u3002"
-                        "\u5982\u679c\u5bc6\u94a5\u5e26\u53e3\u4ee4\uff0c"
-                        "\u8bf7\u7528 ssh-keygen -p \u53bb\u6389\u53e3\u4ee4\u6216\u4f7f\u7528 ssh-agent\u3002"
-                    ) from exc
+                        f"SSH \u8fde\u63a5\u5931\u8d25: \u5bc6\u7801\u88ab\u670d\u52a1\u5668\u62d2\u7edd\uff0c"
+                        f"\u9a8c\u8bc1\u5bc6\u94a5\u4e5f\u5931\u8d25 ({exc2})"
+                    ) from exc2
+            else:
+                raise TransportError(
+                    "SSH \u8fde\u63a5\u5931\u8d25: \u670d\u52a1\u5668\u62d2\u7edd\u5bc6\u7801\u8ba4\u8bc1\uff0c"
+                    "\u8bf7\u5c06\u79c1\u94a5\u653e\u5230\u4ee5\u4e0b\u4efb\u4e00\u4f4d\u7f6e: "
+                    "~/.ssh/id_ed25519\u3001~/.ssh/id_rsa\u3001"
+                    "<exe-dir>/config/id_ed25519 \u6216 id_rsa\u3002"
+                    "\u5982\u679c\u5bc6\u94a5\u5e26\u53e3\u4ee4\uff0c"
+                    "\u8bf7\u7528 ssh-keygen -p \u53bb\u6389\u53e3\u4ee4\u6216\u4f7f\u7528 ssh-agent\u3002"
+                ) from exc
+        except Exception as exc:
             raise TransportError(f"SSH \u8fde\u63a5\u5931\u8d25: {exc}") from exc
 
         channel = _run_interruptible(
