@@ -19,6 +19,7 @@ import socket
 import threading
 import time
 from dataclasses import dataclass
+from pathlib import Path
 import threading
 from threading import Event
 from typing import Any, Callable, Optional
@@ -430,6 +431,58 @@ def _execute_netmiko(
         _disconnect_fast(connection, timeout=options.abort_join_after)
 
 
+# SSH key file names we will probe, in order, when password
+# auth is rejected by the device.  ~/.ssh is the operator's
+# standard location on every platform; the project-side
+# config/ directory lets a per-installation key be dropped
+# next to devices.csv.  ``id_ed25519`` is preferred because
+# it is the current OpenSSH default; ``id_rsa`` is the
+# historical fallback.
+_SSH_KEY_FILENAMES = ("id_ed25519", "id_rsa", "id_ecdsa")
+
+
+def _candidate_ssh_key_paths():
+    """Return the well-known locations an SDT operator might
+    have placed their private key.  The list is generated on
+    each call so a freshly copied key (e.g. into config/) is
+    picked up on the next inspection without restarting the app.
+    """
+    from .paths import BASE_DIR, DATA_DIR
+    home = Path.home()
+    out = []
+    for name in _SSH_KEY_FILENAMES:
+        out.append(home / ".ssh" / name)
+    for base in (BASE_DIR, DATA_DIR):
+        for name in _SSH_KEY_FILENAMES:
+            out.append(base / "config" / name)
+    return out
+
+
+def _try_load_default_ssh_key(paramiko_module):
+    """Return the first usable SSH key in the candidate
+    paths, or ``None`` if no key exists / every key is
+    encrypted / every load fails for any reason.
+    """
+    for path in _candidate_ssh_key_paths():
+        if not path.is_file():
+            continue
+        for loader in (
+            paramiko_module.Ed25519Key,
+            paramiko_module.RSAKey,
+            paramiko_module.ECDSAKey,
+        ):
+            try:
+                return loader.from_private_key_file(str(path))
+            except paramiko_module.PasswordRequiredException:
+                # Encrypted key without a passphrase in our
+                # prompt.  Skip; the operator must remove the
+                # passphrase (``ssh-keygen -p``) or use ssh-agent.
+                break
+            except Exception:
+                continue
+    return None
+
+
 def _execute_ssh(
     device: Device,
     device_type: DeviceType,
@@ -476,6 +529,46 @@ def _execute_ssh(
         except InspectionCancelled:
             raise
         except Exception as exc:
+            # Paramiko raises ``No authentication methods available``
+            # when the device's kex-init only advertises publickey
+            # and the client only offered password.  In that case
+            # look for a default SSH key in the operator's standard
+            # locations and retry; if no key is available, surface
+            # a clear, actionable error instead of Paramiko's
+            # one-liner.
+            if "No authentication methods available" in str(exc):
+                key = _try_load_default_ssh_key(paramiko)
+                if key is not None:
+                    key_args = dict(connect_args)
+                    key_args.pop("password", None)
+                    key_args["pkey"] = key
+                    try:
+                        _run_interruptible(
+                            lambda: client.connect(**key_args),
+                            lambda: _disconnect_fast(
+                                client,
+                                timeout=options.abort_join_after,
+                            ),
+                            stop_event,
+                            poll_interval=options.poll_interval,
+                            join_after=options.abort_join_after,
+                        )
+                    except InspectionCancelled:
+                        raise
+                    except Exception as exc2:
+                        raise TransportError(
+                            f"SSH \u8fde\u63a5\u5931\u8d25: \u5bc6\u7801\u88ab\u670d\u52a1\u5668\u62d2\u7edd\uff0c"
+                            f"\u9a8c\u8bc1\u5bc6\u94a5\u4e5f\u5931\u8d25 ({exc2})"
+                        ) from exc
+                else:
+                    raise TransportError(
+                        "SSH \u8fde\u63a5\u5931\u8d25: \u670d\u52a1\u5668\u62d2\u7edd\u5bc6\u7801\u8ba4\u8bc1\uff0c"
+                        "\u8bf7\u5c06\u79c1\u94a5\u653e\u5230 \u7ed3\u6784 \u4e0b\u7684\u4efb\u4e00\u4f4d\u7f6e: "
+                        "~/.ssh/id_ed25519\u3001~/.ssh/id_rsa\u3001"
+                        "<exe-dir>/config/id_ed25519 \u6216 id_rsa\u3002"
+                        "\u5982\u679c\u5bc6\u94a5\u5e26\u53e3\u4ee4\uff0c"
+                        "\u8bf7\u7528 ssh-keygen -p \u53bb\u6389\u53e3\u4ee4\u6216\u4f7f\u7528 ssh-agent\u3002"
+                    ) from exc
             raise TransportError(f"SSH \u8fde\u63a5\u5931\u8d25: {exc}") from exc
 
         channel = _run_interruptible(
