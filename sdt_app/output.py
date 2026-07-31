@@ -117,11 +117,26 @@ def normalize_output(output: str) -> str:
 
 
 def filter_output(output: str, command: str | None = None) -> str:
+    # SDT devices emit a trailing blank line after every line of
+    # command output (``line\\r\\n\\r\\n`` per line, which becomes
+    # ``line\\n\\n`` after our CRLF/CR normalisation).  When the
+    # captured output is dropped into the per-device log file
+    # this doubles the line count and makes a 5-command inspection
+    # read like 200+ lines.  ``normalize_output`` only collapses
+    # *consecutive* blanks to a single one, so a content line
+    # followed by a blank still ends up as ``content\\n\\n`` --
+    # the unwanted spacing survives.
+    #
+    # The fix is to drop blank lines from the filtered output
+    # entirely.  Legitimate blank lines the operator might want
+    # to see in a ``show running-config``-style dump are an
+    # acceptable loss for the SDT-only use case; the file
+    # writer already adds a single blank between command
+    # sections, so the visual structure is preserved.
     filtered: list[str] = []
     for line in output.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
         stripped = line.strip()
         if not stripped:
-            filtered.append(line)
             continue
         if stripped.startswith("<") and stripped.endswith(">"):
             continue
@@ -130,4 +145,11 @@ def filter_output(output: str, command: str | None = None) -> str:
         if command and stripped == command.strip():
             continue
         filtered.append(line)
-    return normalize_output("\n".join(filtered))
+    if not filtered:
+        return ""
+    # ``join`` cannot introduce a leading blank because every
+    # entry in ``filtered`` is non-blank; strip a possible
+    # trailing blank the device might have appended, then
+    # add a single ``\\n`` so downstream file writers can
+    # rely on the "always ends with newline" invariant.
+    return "\n".join(filtered).rstrip("\n") + "\n"
