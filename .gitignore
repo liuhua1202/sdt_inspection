@@ -1,11 +1,50 @@
-# 本仓库仅分发说明文件与许可证，源代码与构建产物一律不纳入版本库。
-# 程序通过 GitHub Releases 以二进制附件形式发布。
+# Python build / cache artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
 
-# 忽略一切
-*
+# PyInstaller / packaging
+build/
+dist/
+*.egg-info/
+*.spec.bak
 
-# 仅保留需要公开的文件
-!README.md
-!LICENSE
-!.gitignore
-!favicon.ico
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test / lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Runtime artifacts (don't commit live logs or packed binaries)
+InspectionLogs/
+sdt_inspection_win64.zip
+sdt_inspection_*.zip
+*.exe
+
+# Workbuddy / agent tooling state (not part of the source tree)
+.workbuddy/
+.agents/
+
+# OS / shell artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local patch / temp scripts
+.tmp_*
+*.bak
