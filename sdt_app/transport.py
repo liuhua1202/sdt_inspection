@@ -440,6 +440,17 @@ def _execute_netmiko(
 # historical fallback.
 _SSH_KEY_FILENAMES = ("id_ed25519", "id_rsa", "id_ecdsa")
 
+# SDT devices accept only a hard-coded pre-auth SSH account
+# (``sdt`` / ``1213456``) at the SSH layer.  The operator's
+# own credentials from ``devices.csv`` are reserved for the
+# *second-stage* ``login <user> <pass>`` command that the
+# pre-auth shell demands (recognised by a prompt ending in
+# ``]``).  Do not let the device-supplied username/password
+# leak into the SSH handshake -- the device's sshd will
+# reject them.
+SDT_SSH_USERNAME = "sdt"
+SDT_SSH_PASSWORD = "1213456"
+
 
 def _candidate_ssh_key_paths():
     """Return the well-known locations an SDT operator might
@@ -511,13 +522,17 @@ def _execute_ssh(
         connect_args = {
             "hostname": device.host,
             "port": device.port,
-            "username": device.username,
+            # SDT devices only accept a fixed pre-auth account at
+            # the SSH layer (``SDT_SSH_USERNAME`` / ``SDT_SSH_PASSWORD``).
+            # The operator's ``device.username`` / ``device.password``
+            # are kept for the second-stage ``login <user> <pass>``
+            # command issued after the pre-auth shell appears.
+            "username": SDT_SSH_USERNAME,
+            "password": SDT_SSH_PASSWORD,
             "timeout": options.connect_timeout,
             "look_for_keys": False,
             "allow_agent": False,
         }
-        if device.password:
-            connect_args["password"] = device.password
         try:
             _run_interruptible(
                 lambda: client.connect(**connect_args),

@@ -273,12 +273,60 @@ class ExecuteSshFallbackTests(unittest.TestCase):
                 pass
 
         self.assertEqual(len(connect_log), 2)
-        # First attempt offered the password.
-        self.assertEqual(connect_log[0].get("password"), "p")
+        # First attempt used the hard-coded SDT pre-auth account,
+        # NOT ``device.password``.
+        self.assertEqual(connect_log[0].get("username"), "sdt")
+        self.assertEqual(connect_log[0].get("password"), "1213456")
         self.assertNotIn("pkey", connect_log[0])
         # Second attempt dropped the password and attached the key.
         self.assertNotIn("password", connect_log[1])
         self.assertIs(connect_log[1].get("pkey"), sentinel_key)
+
+    def test_ssh_layer_uses_sdt_preauth_account(self):
+        """SDT devices only accept a fixed pre-auth SSH account
+        (``sdt`` / ``1213456``).  ``device.username`` /
+        ``device.password`` are reserved for the second-stage
+        ``login`` command and must NOT leak into the SSH handshake.
+        """
+        connect_log = []
+        fake_paramiko = _build_paramiko_with_bad_auth(connect_log, fail_count=0)
+        # fail_count=0 means the first connect succeeds, so we
+        # observe the connect_args exactly once.
+        device = Device(
+            name="x", host="1.2.3.4",
+            username="admin", password="admin123",
+            protocol="ssh", port=22,
+        )
+        stop = threading.Event()
+        options = transport.TransportOptions(
+            read_timeout=0.3, recv_timeout=0.05, quiet_timeout=0.05,
+        )
+
+        with patch.object(
+            transport, "_ensure_paramiko", return_value=fake_paramiko
+        ):
+            try:
+                transport._execute_ssh(
+                    device, DEFAULT_SDT_TYPE, [], options, stop,
+                    log_warning=None, connection_tracker=None,
+                )
+            except transport.TransportError:
+                pass
+
+        self.assertEqual(len(connect_log), 1)
+        sent = connect_log[0]
+        self.assertEqual(sent.get("username"), "sdt")
+        self.assertEqual(sent.get("password"), "1213456")
+        # And the operator's own credentials did not leak through.
+        self.assertNotEqual(sent.get("username"), "admin")
+        self.assertNotEqual(sent.get("password"), "admin123")
+
+    def test_sdt_preauth_constants_are_exported(self):
+        """Operators and tests should be able to look up the
+        pre-auth account without having to grep the source.
+        """
+        self.assertEqual(transport.SDT_SSH_USERNAME, "sdt")
+        self.assertEqual(transport.SDT_SSH_PASSWORD, "1213456")
 
     def test_bad_auth_type_without_key_raises_actionable_error(self):
         connect_log = []
