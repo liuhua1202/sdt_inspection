@@ -25,7 +25,7 @@ from threading import Event
 from typing import Any, Callable, Optional
 
 from .models import CommandResult, Device, DeviceType
-from .output import decode_bytes, filter_output, has_pagination, has_prompt
+from .output import decode_bytes, filter_output, has_pagination, has_prompt, _is_login_prompt
 
 # Module-level logger that goes through the same handler chain as
 # ``logging_service.logger`` so the wide-except branches in this
@@ -405,6 +405,30 @@ def _execute_netmiko(
         else:
             raise TransportError("\u8fde\u63a5\u6210\u529f\u4f46\u672a\u68c0\u6d4b\u5230\u8bbe\u5907\u547d\u4ee4\u63d0\u793a\u7b26")
 
+        # SDT pre-auth shell detection.  Netmiko's connect handler
+        # already accepted the (operator-supplied) telnet credentials,
+        # but the device only lets the operator in to a "please login
+        # as:" shell that displays the literal hint
+        # ``login <user> <password>``.  Without this branch every
+        # command we send is echoed back inside the same
+        # "please login as:" / ``[SDT-test]`` block and the
+        # inspection file ends up as a wall of login hints.  See
+        # ``_is_login_prompt`` in ``output.py`` for the patterns
+        # we recognise.
+        if _is_login_prompt(initial):
+            if not device.username or not device.password:
+                raise TransportError(
+                    "\u8bbe\u5907\u8981\u6c42\u767b\u5f55\u9a8c\u8bc1\uff0c\u4f46\u6ca1\u6709\u914d\u7f6e\u7528\u6237\u540d\u6216\u5bc6\u7801"
+                )
+            connection.write_channel(
+                f"login {device.username} {device.password}\r\n"
+            )
+            login_output = _run_interruptible(
+                _read_abortable, _abort_netmiko, stop_event,
+            )
+            if not has_prompt(login_output):
+                raise TransportError("\u8bbe\u5907\u7528\u6237\u9a8c\u8bc1\u5931\u8d25")
+
         # SDT does not need enable.  If you fork the project to add
         # a device type that does, reintroduce the enable handshake
         # here against ``device_type.needs_enable``.
@@ -636,7 +660,7 @@ def _execute_ssh(
             if not has_prompt(output):
                 raise TransportError("SSH \u8fde\u63a5\u6210\u529f\u4f46\u672a\u68c0\u6d4b\u5230\u8bbe\u5907\u547d\u4ee4\u63d0\u793a\u7b26")
 
-            if output.rstrip().endswith("]"):
+            if _is_login_prompt(output):
                 if not device.username or not device.password:
                     raise TransportError("\u8bbe\u5907\u8981\u6c42\u767b\u5f55\u9a8c\u8bc1\uff0c\u4f46\u6ca1\u6709\u914d\u7f6e\u7528\u6237\u540d\u6216\u5bc6\u7801")
                 channel.send(f"login {device.username} {device.password}\r\n".encode())

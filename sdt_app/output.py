@@ -97,6 +97,48 @@ def has_prompt(output: str) -> bool:
         if last_line.endswith(("]>", "]#")):
             return True
     return False
+
+
+def _is_login_prompt(output: str) -> bool:
+    """Return True when the device is sitting in the SDT
+    pre-login shell and is asking the operator to issue the
+    ``login <user> <password>`` command.
+
+    SDT devices present the same bracketed prompt in both
+    pre-login and post-login states (``[SDT-test]``) -- the
+    difference is that pre-login is preceded by a hint block.
+    Detecting the hint is the only way to tell them apart,
+    because the prompt itself never changes.
+
+    Recognised patterns (case-insensitive on the keyword):
+
+    * Bracketed prompt that ends with ``]`` -- the SDT default
+      once the pre-auth shell is up.  We require ``]`` to be
+      the trailing char so we don't match menu items that
+      happen to contain ``[`` somewhere.
+    * The literal hint line ``login <user> <password>``
+      (angle brackets are *literal* characters in the
+      device's hint, not placeholders).  Some firmware
+      versions only emit this hint, with no bracketed
+      prompt at all.
+    * The last non-empty line is one of the older
+      single-token prompts ``login:`` / ``login`` /
+      ``username:`` / ``password:`` that earlier firmware
+      revisions used.
+    """
+    stripped = output.rstrip()
+    if not stripped:
+        return False
+    if stripped.endswith("]"):
+        return True
+    # The hint block uses the *literal* angle-bracket template,
+    # so we match the exact string the device sends.
+    if "login <user> <password>" in stripped:
+        return True
+    last_line = stripped.rsplit("\n", 1)[-1].strip().lower()
+    if last_line in {"login:", "login", "username:", "password:"}:
+        return True
+    return False
 def has_pagination(output: str) -> bool:
     lowered = output.lower()
     return any(marker.lower() in lowered for marker in PAGINATION_MARKERS)

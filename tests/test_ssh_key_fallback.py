@@ -348,6 +348,141 @@ class ExecuteSshFallbackTests(unittest.TestCase):
             "hardware before changing this assertion."
         )
 
+
+class _FakeNetmiko:
+    """Stand-in for the real ``netmiko`` module, used to
+    drive ``_execute_netmiko`` end-to-end without touching
+    the network.  The test only needs to assert which
+    commands the code wrote to the channel and which
+    bytes the device pretended to return.
+    """
+
+    class ConnectHandler:
+        @staticmethod
+        def __call__(**kwargs):
+            raise AssertionError("placeholder; replaced per-test")
+
+
+def _build_fake_netmiko(first_read, post_login_read, write_log):
+    """Build a netmiko stand-in whose ``ConnectHandler`` returns a
+    connection that emits ``first_read`` on the first drain,
+    then ``post_login_read`` on every subsequent read.
+
+    ``write_log`` is appended with every command the code
+    wrote to the channel so the test can assert the login
+    command was sent at the right time.
+    """
+
+    class _Connection:
+        def __init__(self):
+            self.drain_count = 0
+            self.closed = False
+
+        def write_channel(self, data):
+            write_log.append(data)
+
+        def read_channel(self):
+            self.drain_count += 1
+            return post_login_read if self.drain_count >= 2 else first_read
+
+        def disconnect(self):
+            self.closed = True
+
+    def _connect(**kwargs):
+        return _Connection()
+
+    class _Netmiko:
+        ConnectHandler = staticmethod(_connect)
+
+    return _Netmiko
+
+
+class ExecuteNetmikoLoginTests(unittest.TestCase):
+    """``_execute_netmiko`` did not previously run the SDT
+    ``login <user> <password>`` handshake, so telnet devices
+    that drop the operator into the pre-auth shell (e.g.
+    SDT-Device-01) returned a wall of ``please login as:``
+    hints for every command.  These tests lock in the fix.
+    """
+
+    def _make_device(self):
+        return Device(
+            name="x", host="1.2.3.4",
+            username="admin", password="admin123",
+            protocol="telnet", port=23,
+        )
+
+    def test_login_command_sent_when_hint_block_present(self):
+        """The exact block the SDT-Device-01 telnet session
+        captured on 2026-08-01: device shows a hint block with
+        the literal ``login <user> <password>`` string and a
+        bracketed prompt.  ``_execute_netmiko`` must detect
+        this and send the operator-supplied ``login
+        admin admin123`` command.
+        """
+        first_read = b"please login as:\r\nlogin <user> <password>\r\n[SDT-test]"
+        post_login_read = b"\r\n[SDT-test]"
+        write_log: list[str] = []
+        fake_netmiko = _build_fake_netmiko(
+            first_read, post_login_read, write_log,
+        )
+
+        device = self._make_device()
+        stop = threading.Event()
+        options = transport.TransportOptions(
+            read_timeout=0.3, recv_timeout=0.05, quiet_timeout=0.05,
+        )
+
+        with patch.object(transport, "_ensure_netmiko", return_value=fake_netmiko):
+            try:
+                transport._execute_netmiko(
+                    device, DEFAULT_SDT_TYPE, [], options, stop,
+                    connection_tracker=None,
+                )
+            except transport.TransportError:
+                pass
+
+        # The first channel write after the initial drain must
+        # be the login command.  Later writes are the
+        # disable_paging command and any per-command traffic.
+        self.assertTrue(
+            any("login admin admin123" in w for w in write_log),
+            f"expected login command in writes, got {write_log!r}",
+        )
+
+    def test_login_command_sent_when_bracketed_prompt_alone(self):
+        """Older firmware variants (and the SDT SSH path) only
+        show the bracketed prompt at first contact, with no
+        hint block.  ``_execute_netmiko`` must still trigger
+        the login flow on the bracketed prompt alone.
+        """
+        first_read = b"\r\n[SDT-test]"
+        post_login_read = b"\r\n[SDT-test]"
+        write_log: list[str] = []
+        fake_netmiko = _build_fake_netmiko(
+            first_read, post_login_read, write_log,
+        )
+
+        device = self._make_device()
+        stop = threading.Event()
+        options = transport.TransportOptions(
+            read_timeout=0.3, recv_timeout=0.05, quiet_timeout=0.05,
+        )
+
+        with patch.object(transport, "_ensure_netmiko", return_value=fake_netmiko):
+            try:
+                transport._execute_netmiko(
+                    device, DEFAULT_SDT_TYPE, [], options, stop,
+                    connection_tracker=None,
+                )
+            except transport.TransportError:
+                pass
+
+        self.assertTrue(
+            any("login admin admin123" in w for w in write_log),
+            f"expected login command in writes, got {write_log!r}",
+        )
+
     def test_bad_auth_type_without_key_raises_actionable_error(self):
         connect_log = []
         fake_paramiko = _build_paramiko_with_bad_auth(connect_log, fail_count=999)

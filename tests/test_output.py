@@ -1,6 +1,13 @@
 import unittest
 
-from sdt_app.output import decode_bytes, filter_output, has_pagination, has_prompt, normalize_output
+from sdt_app.output import (
+    _is_login_prompt,
+    decode_bytes,
+    filter_output,
+    has_pagination,
+    has_prompt,
+    normalize_output,
+)
 
 
 class OutputTests(unittest.TestCase):
@@ -61,6 +68,46 @@ class OutputTests(unittest.TestCase):
         # every content line; the result should be the empty
         # string, not a string of newlines.
         self.assertEqual(filter_output("\r\n\r\n\r\n", "show run"), "")
+
+
+class IsLoginPromptTests(unittest.TestCase):
+    """``_is_login_prompt`` drives the SDT pre-auth ``login
+    <user> <password>`` handshake for both the Paramiko (SSH)
+    and Netmiko (telnet) paths.  A regression here means the
+    inspection file becomes a wall of ``please login as:``
+    hints instead of the real command output."""
+
+    def test_detects_bracketed_prompt(self):
+        # The SDT default: pre-auth shell ends in ``]``.
+        self.assertTrue(_is_login_prompt("welcome\n[SDT-test]"))
+        self.assertTrue(_is_login_prompt("[SDT-test]"))
+
+    def test_detects_literal_login_hint_block(self):
+        # The exact block the SDT-Device-01 telnet session
+        # captured on 2026-08-01: the hint has literal angle
+        # brackets, NOT placeholders.
+        block = "please login as:\r\nlogin <user> <password>\r\n[SDT-test]"
+        self.assertTrue(_is_login_prompt(block))
+
+    def test_detects_legacy_single_token_prompts(self):
+        for prompt in ("login:", "login", "Username:", "Password:",
+                       "  login  ", "LOGIN"):
+            self.assertTrue(
+                _is_login_prompt(f"foo\n{prompt}"),
+                f"expected {prompt!r} to trigger login flow",
+            )
+
+    def test_does_not_trigger_on_real_command_prompts(self):
+        # ``Switch>`` / ``router#`` are post-login prompts.  The
+        # bracketed ``[`` rule is a tail match on ``]`` only, so
+        # ``Switch>`` and ``router#`` must not match.
+        self.assertFalse(_is_login_prompt("data\nSwitch>"))
+        self.assertFalse(_is_login_prompt("data\nrouter#"))
+
+    def test_empty_input_is_not_a_login_prompt(self):
+        self.assertFalse(_is_login_prompt(""))
+        self.assertFalse(_is_login_prompt("\n\n"))
+        self.assertFalse(_is_login_prompt("   \n  \n"))
 
 
 if __name__ == "__main__":
