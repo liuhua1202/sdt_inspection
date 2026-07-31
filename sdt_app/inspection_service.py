@@ -233,7 +233,12 @@ class InspectionService:
         # only do this for the per-device log path: shared events
         # (start/stop of the whole job) intentionally do not see
         # credentials.
-        device_secrets = (device.password, device.enable_password)
+        # The Device dataclass no longer has an enable_password
+        # field (the SDT-only refactor removed it; SDT never needed
+        # enable).  Pass the device password alone to the redaction
+        # helper; if a future device type needs enable, reintroduce
+        # the field and re-add it here.
+        device_secrets = (device.password,)
         self._emit(
             InspectionEvent(
                 kind="device_started",

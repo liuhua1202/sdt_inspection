@@ -363,8 +363,11 @@ def _execute_netmiko(
         params["username"] = device.username
     if device.password:
         params["password"] = device.password
-    if device.enable_password:
-        params["secret"] = device.enable_password
+    # SDT does not need enable (DEFAULT_SDT_TYPE.needs_enable is
+    # always False), and the legacy ``Device.enable_password``
+    # field was removed in the SDT-only refactor.  Operators who
+    # fork the project to add a new device type can reintroduce
+    # the enable handshake here.
 
     # Wrap the initial ConnectHandler so stop_event can interrupt it.
     connection = _run_interruptible(
@@ -401,14 +404,9 @@ def _execute_netmiko(
         else:
             raise TransportError("\u8fde\u63a5\u6210\u529f\u4f46\u672a\u68c0\u6d4b\u5230\u8bbe\u5907\u547d\u4ee4\u63d0\u793a\u7b26")
 
-        if device_type.needs_enable and device.enable_password and hasattr(connection, "enable"):
-            _run_interruptible(
-                lambda: connection.enable(),
-                _abort_netmiko,
-                stop_event,
-                poll_interval=options.poll_interval,
-                join_after=options.abort_join_after,
-            )
+        # SDT does not need enable.  If you fork the project to add
+        # a device type that does, reintroduce the enable handshake
+        # here against ``device_type.needs_enable``.
         if device_type.disable_paging_command:
             connection.write_channel(device_type.disable_paging_command + "\r\n")
             _run_interruptible(_read_abortable, _abort_netmiko, stop_event)
@@ -519,15 +517,9 @@ def _execute_ssh(
                 if not has_prompt(login_output):
                     raise TransportError("\u8bbe\u5907\u7528\u6237\u9a8c\u8bc1\u5931\u8d25")
 
-            if device_type.needs_enable:
-                if not device.enable_password:
-                    raise TransportError("\u8bbe\u5907\u9700\u8981 enable\uff0c\u4f46\u6ca1\u6709\u914d\u7f6e enable \u5bc6\u7801")
-                channel.send(b"enable\r\n")
-                enable_output = _run_interruptible(_read_abortable, _abort_ssh, stop_event)
-                if "password" in enable_output.lower():
-                    channel.send((device.enable_password + "\r\n").encode())
-                    _run_interruptible(_read_abortable, _abort_ssh, stop_event)
-
+            # SDT does not need enable.  If you fork the project to add
+            # a device type that does, reintroduce the enable handshake
+            # here against ``device_type.needs_enable``.
             if device_type.disable_paging_command:
                 channel.send((device_type.disable_paging_command + "\r\n").encode())
                 _run_interruptible(_read_abortable, _abort_ssh, stop_event)
